@@ -1,11 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Test Site</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Site</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;line-height:1.5}
+input,textarea,button{width:100%;font:inherit;padding:10px;margin:6px 0;box-sizing:border-box}
+button{background:#222;color:#fff;border:0;border-radius:6px}
+.note{border-top:1px solid #ccc;padding:10px 0}
+.note small{color:#777}
+#status{color:#a23b2a}
+</style>
 </head>
 <body>
-  <h1>Hello World</h1>
+<h1>Hello World</h1>
+<p>Leave a note. It saves to the database.</p>
+
+<input id="name" placeholder="Your name" maxlength="50">
+<textarea id="message" rows="3" placeholder="Your message" maxlength="300"></textarea>
+<button id="save">Save note</button>
+<div id="status"></div>
+
+<h2>Notes</h2>
+<div id="list">Loading…</div>
+
+<script>
+// PASTE YOUR TWO VALUES BETWEEN THE QUOTES (publishable/anon key only, never the secret key)
+const SUPABASE_URL = "https://wnbxuamygcqncndoorhi.supabase.co/rest/v1/";
+const SUPABASE_KEY = "sb_publishable_OXyxSmeIpIQBk5zeHAwzxw_4Jnqv4VV";
+
+const API = SUPABASE_URL + "/rest/v1/notes";
+const headers = { apikey: SUPABASE_KEY, "Content-Type": "application/json" };
+const $ = id => document.getElementById(id);
+
+async function loadNotes() {
+  try {
+    const r = await fetch(API + "?select=*&order=created_at.desc&limit=20", { headers });
+    if (!r.ok) throw new Error(r.status);
+    const rows = await r.json();
+    $("list").innerHTML = "";
+    if (!rows.length) $("list").textContent = "No notes yet. Add the first one!";
+    rows.forEach(n => {
+      const d = document.createElement("div");
+      d.className = "note";
+      const b = document.createElement("b");  b.textContent = n.name || "Anonymous";
+      const m = document.createElement("div"); m.textContent = n.message;
+      const t = document.createElement("small"); t.textContent = new Date(n.created_at).toLocaleString();
+      d.append(b, m, t);
+      $("list").append(d);
+    });
+  } catch (e) {
+    $("list").textContent = "Couldn't load notes. Check the two values at the top of the script.";
+  }
+}
+
+$("save").onclick = async () => {
+  const name = $("name").value.trim(), message = $("message").value.trim();
+  if (!message) { $("status").textContent = "Please write a message."; return; }
+  $("status").textContent = "Saving…";
+  try {
+    const r = await fetch(API, { method: "POST", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify({ name, message }) });
+    if (!r.ok) throw new Error(r.status);
+    $("message").value = ""; $("status").textContent = "";
+    loadNotes();
+  } catch (e) {
+    $("status").textContent = "Couldn't save. Check your URL and key.";
+  }
+};
+
+loadNotes();
+</script>
 </body>
 </html>
